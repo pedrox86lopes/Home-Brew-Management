@@ -1,0 +1,88 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Update Session - {{ session.batch_name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="bi bi-gear"></i> Update Brewing Session
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Batch Name</label>
+                            <input type="text" class="form-control" name="batch_name" 
+                                   value="{{ session.batch_name }}" required>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Status</label>
+                                    <select class="form-select" name="status">
+                                        {% for value, label in session.BREW_STATUSES %}
+                                            <option value="{{ value }}" {% if session.status == value %}selected{% endif %}>
+                                                {{ label }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Current Stage</label>
+                                    <select class="form-select" name="current_stage">
+                                        {% for value, label in session.CURRENT_STAGES %}
+                                            <option value="{{ value }}" {% if session.current_stage == value %}selected{% endif %}>
+                                                {{ label }}
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">General Notes</label>
+                            <textarea class="form-control" name="notes" rows="4">{{ session.notes }}</textarea>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Fermentation Start</label>
+                                    <input type="datetime-local" class="form-control" name="fermentation_start" 
+                                           value="{{ session.fermentation_start|date:'Y-m-d\TH:i' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Fermentation End</label>
+                                    <input type="datetime-local" class="form-control" name="fermentation_end" 
+                                           value="{{ session.fermentation_end|date:'Y-m-d\TH:i' }}">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'brew_session_detail' session.pk %}" class="btn btn-outline-secondary me-md-2">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save"></i> Update Session
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

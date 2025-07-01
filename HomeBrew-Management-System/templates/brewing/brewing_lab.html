@@ -1,0 +1,217 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Brewing Lab{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-flask"></i> Brewing Lab</h1>
+        <div class="btn-group">
+            <a href="{% url 'fermentation_lab' %}" class="btn btn-outline-success">
+                <i class="bi bi-droplet"></i> Fermentation Lab
+            </a>
+            <a href="{% url 'brewing_calculator' %}" class="btn btn-outline-info">
+                <i class="bi bi-calculator"></i> Calculator
+            </a>
+        </div>
+    </div>
+
+    <!-- Alerts -->
+    {% if pending_alerts %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="alert alert-warning">
+                    <h5><i class="bi bi-exclamation-triangle"></i> Pending Alerts</h5>
+                    {% for alert in pending_alerts %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <strong>{{ alert.title }}</strong> - {{ alert.brew_session.batch_name }}
+                                <br><small class="text-muted">{{ alert.message }}</small>
+                            </div>
+                            <a href="{% url 'dismiss_alert' alert.pk %}" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-x"></i> Dismiss
+                            </a>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Active Brewing Sessions -->
+    {% if active_sessions %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-play-circle"></i> Active Brewing Sessions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for session in active_sessions %}
+                                <div class="col-md-6 col-lg-4 mb-3">
+                                    <div class="card border-{% if session.status == 'active' %}primary{% elif session.status == 'fermenting' %}success{% else %}info{% endif %}">
+                                        <div class="card-header d-flex justify-content-between">
+                                            <span class="badge bg-{% if session.status == 'active' %}primary{% elif session.status == 'fermenting' %}success{% else %}info{% endif %}">
+                                                {{ session.get_status_display }}
+                                            </span>
+                                            <small class="text-muted">{{ session.days_since_start }} days ago</small>
+                                        </div>
+                                        <div class="card-body">
+                                            <h6 class="card-title">{{ session.batch_name }}</h6>
+                                            <p class="card-text">
+                                                <small class="text-muted">{{ session.recipe.name }}</small><br>
+                                                <strong>Stage:</strong> {{ session.get_current_stage_display }}<br>
+                                                <strong>Size:</strong> {{ session.actual_batch_size }}L
+                                            </p>
+                                        </div>
+                                        <div class="card-footer">
+                                            {% if session.status == 'active' %}
+                                                <a href="{% url 'brew_session_detail' session.pk %}" class="btn btn-primary btn-sm">
+                                                    <i class="bi bi-eye"></i> Continue Brewing
+                                                </a>
+                                            {% elif session.status == 'fermenting' %}
+                                                <a href="{% url 'fermentation_detail' session.pk %}" class="btn btn-success btn-sm">
+                                                    <i class="bi bi-droplet"></i> View Fermentation
+                                                </a>
+                                            {% else %}
+                                                <a href="{% url 'brew_session_detail' session.pk %}" class="btn btn-info btn-sm">
+                                                    <i class="bi bi-eye"></i> View Details
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Start New Brew -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Start New Brewing Session</h5>
+                </div>
+                <div class="card-body">
+                    {% if available_recipes %}
+                        <div class="row">
+                            {% for recipe in available_recipes %}
+                                <div class="col-md-6 col-lg-4 mb-3">
+                                    <div class="card recipe-card">
+                                        <div class="card-body">
+                                            <h6 class="card-title">{{ recipe.name }}</h6>
+                                            <p class="card-text">
+                                                <small class="text-muted">{{ recipe.style.name }}</small><br>
+                                                <strong>OG:</strong> {{ recipe.calculated_og|floatformat:3|default:"-" }}<br>
+                                                <strong>IBU:</strong> {{ recipe.calculated_ibu|floatformat:0|default:"-" }}<br>
+                                                <strong>Size:</strong> {{ recipe.batch_size }}L
+                                            </p>
+                                        </div>
+                                        <div class="card-footer">
+                                            <a href="{% url 'start_brew_session' recipe.pk %}" class="btn btn-success btn-sm w-100">
+                                                <i class="bi bi-play-fill"></i> Start Brewing
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="text-center mt-3">
+                            <a href="{% url 'recipe_list' %}" class="btn btn-outline-primary">
+                                <i class="bi bi-book"></i> View All Recipes
+                            </a>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="bi bi-book display-4 text-muted"></i>
+                            <h5 class="mt-3">No Recipes Available</h5>
+                            <p class="text-muted">Create a recipe first to start brewing.</p>
+                            <a href="{% url 'recipe_create' %}" class="btn btn-primary">
+                                <i class="bi bi-plus-circle"></i> Create Recipe
+                            </a>
+                            <a href="{% url 'ai_recipe_generator_django' %}" class="btn btn-warning ms-2">
+                                <i class="bi bi-robot"></i> AI Recipe Generator
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Completed Sessions -->
+    {% if recent_sessions %}
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-check-circle"></i> Recent Completed Brews</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Batch Name</th>
+                                        <th>Recipe</th>
+                                        <th>Brew Date</th>
+                                        <th>OG</th>
+                                        <th>FG</th>
+                                        <th>ABV</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for session in recent_sessions %}
+                                        <tr>
+                                            <td><strong>{{ session.batch_name }}</strong></td>
+                                            <td>{{ session.recipe.name }}</td>
+                                            <td>{{ session.brew_date|date:"M d, Y" }}</td>
+                                            <td>{{ session.actual_og|floatformat:3|default:"-" }}</td>
+                                            <td>{{ session.actual_fg|floatformat:3|default:"-" }}</td>
+                                            <td>{{ session.actual_abv|floatformat:1|default:"-" }}%</td>
+                                            <td>
+                                                <a href="{% url 'brew_session_detail' session.pk %}" class="btn btn-outline-primary btn-sm">
+                                                    <i class="bi bi-eye"></i> View
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="text-center mt-3">
+                            <a href="{% url 'brew_session_list' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-list"></i> View All Sessions
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+.recipe-card {
+    transition: transform 0.2s ease-in-out;
+    height: 100%;
+}
+
+.recipe-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.card-header .badge {
+    font-size: 0.75rem;
+}
+</style>
+{% endblock %}

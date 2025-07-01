@@ -1,0 +1,276 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Add Ingredient - Inventory{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="bi bi-plus-circle"></i> Add Ingredient to Inventory</h1>
+                <a href="{% url 'inventory_list' %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Inventory
+                </a>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <form method="post" id="ingredient-form">
+                        {% csrf_token %}
+                        
+                        <!-- Ingredient Type Selection -->
+                        <div class="mb-4">
+                            <label class="form-label">Ingredient Type</label>
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="ingredient_type" 
+                                               id="type_grain" value="grain" checked>
+                                        <label class="form-check-label" for="type_grain">
+                                            <i class="bi bi-grain"></i> Grain/Malt
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="ingredient_type" 
+                                               id="type_hop" value="hop">
+                                        <label class="form-check-label" for="type_hop">
+                                            <i class="bi bi-flower1"></i> Hops
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="ingredient_type" 
+                                               id="type_yeast" value="yeast">
+                                        <label class="form-check-label" for="type_yeast">
+                                            <i class="bi bi-bacteria"></i> Yeast
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="ingredient_type" 
+                                               id="type_other" value="other">
+                                        <label class="form-check-label" for="type_other">
+                                            <i class="bi bi-three-dots"></i> Other
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ingredient Selection -->
+                        <div class="mb-3">
+                            <label for="ingredient_id" class="form-label">Select Ingredient</label>
+                            
+                            <!-- Grains -->
+                            <select class="form-select ingredient-select" id="grain_select" name="ingredient_id" style="display: block;">
+                                <option value="">Choose a grain...</option>
+                                {% for grain in grains %}
+                                    <option value="{{ grain.id }}">{{ grain.name }} ({{ grain.color }} SRM)</option>
+                                {% endfor %}
+                            </select>
+                            
+                            <!-- Hops -->
+                            <select class="form-select ingredient-select" id="hop_select" name="ingredient_id" style="display: none;">
+                                <option value="">Choose a hop...</option>
+                                {% for hop in hops %}
+                                    <option value="{{ hop.id }}">{{ hop.name }} ({{ hop.alpha_acid }}% AA)</option>
+                                {% endfor %}
+                            </select>
+                            
+                            <!-- Yeast -->
+                            <select class="form-select ingredient-select" id="yeast_select" name="ingredient_id" style="display: none;">
+                                <option value="">Choose a yeast...</option>
+                                {% for yeast in yeasts %}
+                                    <option value="{{ yeast.id }}">{{ yeast.laboratory }} {{ yeast.strain_number }} - {{ yeast.name }}</option>
+                                {% endfor %}
+                            </select>
+                            
+                            <!-- Other -->
+                            <input type="text" class="form-control ingredient-select" id="other_input" 
+                                   placeholder="Enter ingredient name..." style="display: none;">
+                        </div>
+
+                        <!-- Stock Information -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="current_stock" class="form-label">Current Stock</label>
+                                <input type="number" class="form-control" id="current_stock" name="current_stock" 
+                                       step="0.01" min="0" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="unit" class="form-label">Unit</label>
+                                <select class="form-select" id="unit" name="unit">
+                                    <option value="kg">Kilograms (kg)</option>
+                                    <option value="g">Grams (g)</option>
+                                    <option value="lb">Pounds (lb)</option>
+                                    <option value="oz">Ounces (oz)</option>
+                                    <option value="unit">Units/Packages</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Cost Information -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="cost_per_unit" class="form-label">Cost per Unit</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="cost_per_unit" name="cost_per_unit" 
+                                           step="0.01" min="0">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="minimum_stock" class="form-label">Minimum Stock Level</label>
+                                <input type="number" class="form-control" id="minimum_stock" name="minimum_stock" 
+                                       step="0.01" min="0" value="0">
+                            </div>
+                        </div>
+
+                        <!-- Storage Information -->
+                        <div class="mb-3">
+                            <label for="location" class="form-label">Storage Location (Optional)</label>
+                            <input type="text" class="form-control" id="location" name="location" 
+                                   placeholder="e.g., Pantry, Fridge, Basement">
+                        </div>
+
+                        <!-- Expiry Date -->
+                        <div class="mb-4">
+                            <label for="expiry_date" class="form-label">Expiry Date (Optional)</label>
+                            <input type="date" class="form-control" id="expiry_date" name="expiry_date">
+                        </div>
+
+                        <!-- Total Cost Calculation -->
+                        <div class="alert alert-info" id="cost-calculation" style="display: none;">
+                            <h6><i class="bi bi-calculator"></i> Cost Calculation</h6>
+                            <p class="mb-0">
+                                <strong>Total Cost:</strong> $<span id="total-cost">0.00</span>
+                                <br>
+                                <small class="text-muted">
+                                    <span id="stock-amount">0</span> <span id="stock-unit">kg</span> × 
+                                    $<span id="unit-cost">0.00</span> per <span id="cost-unit">kg</span>
+                                </small>
+                            </p>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'inventory_list' %}" class="btn btn-outline-secondary me-md-2">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-circle"></i> Add to Inventory
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Help Card -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-info-circle"></i> Tips</h6>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li><strong>Units:</strong> Choose the unit that matches how you purchase/store the ingredient</li>
+                        <li><strong>Minimum Stock:</strong> Set this to get alerts when you're running low</li>
+                        <li><strong>Storage Location:</strong> Helps you find ingredients quickly when brewing</li>
+                        <li><strong>Expiry Date:</strong> Set for perishable items like liquid yeast</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const typeRadios = document.querySelectorAll('input[name="ingredient_type"]');
+        const ingredientSelects = document.querySelectorAll('.ingredient-select');
+        const stockInput = document.getElementById('current_stock');
+        const costInput = document.getElementById('cost_per_unit');
+        const unitSelect = document.getElementById('unit');
+        const costCalculation = document.getElementById('cost-calculation');
+
+        // Handle ingredient type changes
+        typeRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                // Hide all selects
+                ingredientSelects.forEach(select => {
+                    select.style.display = 'none';
+                    select.removeAttribute('name');
+                });
+
+                // Show the relevant select
+                const selectedType = this.value;
+                const targetSelect = document.getElementById(selectedType + '_select') || 
+                                   document.getElementById(selectedType + '_input');
+                
+                if (targetSelect) {
+                    targetSelect.style.display = 'block';
+                    targetSelect.setAttribute('name', 'ingredient_id');
+                }
+
+                // Update unit default based on type
+                if (selectedType === 'yeast') {
+                    unitSelect.value = 'unit';
+                } else if (selectedType === 'hop') {
+                    unitSelect.value = 'g';
+                } else {
+                    unitSelect.value = 'kg';
+                }
+
+                updateCostCalculation();
+            });
+        });
+
+        // Cost calculation
+        function updateCostCalculation() {
+            const stock = parseFloat(stockInput.value) || 0;
+            const cost = parseFloat(costInput.value) || 0;
+            const unit = unitSelect.value;
+            const totalCost = stock * cost;
+
+            if (stock > 0 && cost > 0) {
+                document.getElementById('total-cost').textContent = totalCost.toFixed(2);
+                document.getElementById('stock-amount').textContent = stock.toFixed(2);
+                document.getElementById('stock-unit').textContent = unit;
+                document.getElementById('unit-cost').textContent = cost.toFixed(2);
+                document.getElementById('cost-unit').textContent = unit;
+                costCalculation.style.display = 'block';
+            } else {
+                costCalculation.style.display = 'none';
+            }
+        }
+
+        // Update calculation when values change
+        stockInput.addEventListener('input', updateCostCalculation);
+        costInput.addEventListener('input', updateCostCalculation);
+        unitSelect.addEventListener('change', updateCostCalculation);
+
+        // Form validation
+        document.getElementById('ingredient-form').addEventListener('submit', function(e) {
+            const selectedType = document.querySelector('input[name="ingredient_type"]:checked').value;
+            const ingredientInput = document.querySelector('.ingredient-select[style="display: block;"]');
+            
+            if (!ingredientInput.value) {
+                e.preventDefault();
+                alert('Please select an ingredient.');
+                return false;
+            }
+
+            if (!stockInput.value || parseFloat(stockInput.value) <= 0) {
+                e.preventDefault();
+                alert('Please enter a valid stock amount.');
+                return false;
+            }
+        });
+    });
+</script>
+{% endblock %}

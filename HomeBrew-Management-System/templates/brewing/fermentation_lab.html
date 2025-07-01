@@ -1,0 +1,249 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Fermentation Lab{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="bi bi-droplet"></i> Fermentation Lab</h1>
+        <div class="btn-group">
+            <a href="{% url 'brewing_lab' %}" class="btn btn-outline-primary">
+                <i class="bi bi-flask"></i> Brewing Lab
+            </a>
+            <a href="{% url 'brew_session_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-list"></i> All Sessions
+            </a>
+        </div>
+    </div>
+
+    <!-- Pending Alerts -->
+    {% if pending_alerts %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="alert alert-warning">
+                    <h5><i class="bi bi-bell"></i> Fermentation Alerts</h5>
+                    {% for alert in pending_alerts %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <strong>{{ alert.title }}</strong> - {{ alert.brew_session.batch_name }}
+                                <br><small class="text-muted">{{ alert.message }}</small>
+                                <br><small class="text-muted">Due: {{ alert.alert_date|date:"M d, Y H:i" }}</small>
+                            </div>
+                            <div>
+                                <a href="{% url 'fermentation_detail' alert.brew_session.pk %}" class="btn btn-sm btn-primary me-2">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                                <a href="{% url 'dismiss_alert' alert.pk %}" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-x"></i> Dismiss
+                                </a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Active Fermentations -->
+    {% if fermenting_sessions %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-activity"></i> Active Fermentations</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for session in fermenting_sessions %}
+                                <div class="col-md-6 col-lg-4 mb-3">
+                                    <div class="card border-success">
+                                        <div class="card-header d-flex justify-content-between">
+                                            <span class="badge bg-success">Fermenting</span>
+                                            <small class="text-muted">Day {{ session.days_fermenting }}</small>
+                                        </div>
+                                        <div class="card-body">
+                                            <h6 class="card-title">{{ session.batch_name }}</h6>
+                                            <p class="card-text">
+                                                <small class="text-muted">{{ session.recipe.name }}</small><br>
+                                                <strong>Started:</strong> {{ session.fermentation_start|date:"M d" }}<br>
+                                                <strong>OG:</strong> {{ session.actual_og|floatformat:3|default:"-" }}<br>
+                                                {% with progress=session.get_fermentation_progress %}
+                                                    {% if progress > 0 %}
+                                                        <div class="progress mt-2">
+                                                            <div class="progress-bar bg-success" style="width: {{ progress }}%"></div>
+                                                        </div>
+                                                        <small class="text-muted">{{ progress|floatformat:0 }}% complete</small>
+                                                    {% endif %}
+                                                {% endwith %}
+                                            </p>
+                                        </div>
+                                        <div class="card-footer">
+                                            <a href="{% url 'fermentation_detail' session.pk %}" class="btn btn-success btn-sm w-100">
+                                                <i class="bi bi-eye"></i> Track Fermentation
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Ready for Packaging -->
+    {% if ready_sessions %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-archive"></i> Ready for Packaging</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for session in ready_sessions %}
+                                <div class="col-md-6 col-lg-4 mb-3">
+                                    <div class="card border-info">
+                                        <div class="card-header d-flex justify-content-between">
+                                            <span class="badge bg-info">Conditioning</span>
+                                            <small class="text-muted">
+                                                {% if session.fermentation_end %}
+                                                    {{ session.fermentation_end|timesince }} ago
+                                                {% else %}
+                                                    Ready
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                        <div class="card-body">
+                                            <h6 class="card-title">{{ session.batch_name }}</h6>
+                                            <p class="card-text">
+                                                <small class="text-muted">{{ session.recipe.name }}</small><br>
+                                                <strong>OG:</strong> {{ session.actual_og|floatformat:3|default:"-" }}<br>
+                                                <strong>FG:</strong> {{ session.actual_fg|floatformat:3|default:"-" }}<br>
+                                                <strong>ABV:</strong> {{ session.actual_abv|floatformat:1|default:"-" }}%<br>
+                                                <strong>Fermented:</strong> {{ session.days_fermenting }} days
+                                            </p>
+                                        </div>
+                                        <div class="card-footer">
+                                            <a href="{% url 'fermentation_detail' session.pk %}" class="btn btn-info btn-sm w-100">
+                                                <i class="bi bi-eye"></i> View Details
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Recent Fermentation Notes -->
+    {% if recent_notes %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-journal-text"></i> Recent Fermentation Notes</h5>
+                    </div>
+                    <div class="card-body">
+                        {% for note in recent_notes %}
+                            <div class="border-bottom pb-3 mb-3">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1">
+                                            <a href="{% url 'fermentation_detail' note.brew_session.pk %}" class="text-decoration-none">
+                                                {{ note.title }}
+                                            </a>
+                                        </h6>
+                                        <small class="text-muted">{{ note.brew_session.batch_name }} - {{ note.note_date|date:"M d, Y H:i" }}</small>
+                                    </div>
+                                    {% if note.krausen_activity %}
+                                        <span class="badge bg-secondary">{{ note.get_krausen_activity_display }}</span>
+                                    {% endif %}
+                                </div>
+                                <p class="mt-2 mb-0">{{ note.content|truncatewords:25 }}</p>
+                                {% if note.aroma_notes %}
+                                    <small class="text-muted"><strong>Aroma:</strong> {{ note.aroma_notes|truncatewords:10 }}</small>
+                                {% endif %}
+                            </div>
+                        {% empty %}
+                            <p class="text-muted">No fermentation notes yet.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Empty State -->
+    {% if not fermenting_sessions and not ready_sessions and not recent_notes %}
+        <div class="row">
+            <div class="col-12">
+                <div class="text-center py-5">
+                    <i class="bi bi-droplet display-1 text-muted"></i>
+                    <h3 class="mt-3">No Active Fermentations</h3>
+                    <p class="text-muted">Start brewing to see your fermentations here.</p>
+                    <a href="{% url 'brewing_lab' %}" class="btn btn-primary">
+                        <i class="bi bi-flask"></i> Go to Brewing Lab
+                    </a>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Quick Stats -->
+    <div class="row mt-4">
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h3>{{ fermenting_sessions|length }}</h3>
+                    <small>Active Fermentations</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <h3>{{ ready_sessions|length }}</h3>
+                    <small>Ready for Packaging</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body text-center">
+                    <h3>{{ pending_alerts|length }}</h3>
+                    <small>Pending Alerts</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h3>{{ recent_notes|length }}</h3>
+                    <small>Recent Notes</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.progress {
+    height: 8px;
+}
+
+.card .badge {
+    font-size: 0.75rem;
+}
+
+.border-bottom:last-child {
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,513 @@
+{% extends 'base/base.html' %}
+
+{% block title %}AI Recipe Generator - HomeBrew Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ai-generator-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    
+    .recipe-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 1rem;
+        padding: 1rem;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+    }
+    
+    .stat-item {
+        text-align: center;
+    }
+    
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #0d6efd;
+    }
+    
+    .stat-label {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+    
+    .ingredient-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 1.5rem;
+    }
+    
+    .ingredient-table th,
+    .ingredient-table td {
+        padding: 0.75rem;
+        border: 1px solid #dee2e6;
+        text-align: left;
+    }
+    
+    .ingredient-table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+    }
+    
+    .loading {
+        display: none;
+    }
+    
+    .loading.active {
+        display: inline-block;
+    }
+    
+    .brewing-step {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+        padding: 0.75rem;
+        background-color: #f8f9fa;
+        border-radius: 6px;
+    }
+    
+    .step-number {
+        background-color: #0d6efd;
+        color: white;
+        width: 2rem;
+        height: 2rem;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-right: 1rem;
+        flex-shrink: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Header -->
+    <div class="ai-generator-card text-center">
+        <h1 class="mb-3">
+            <i class="bi bi-robot"></i> AI Recipe Generator
+        </h1>
+        <p class="lead mb-0">
+            Generate perfect brewing recipes for your desired batch size
+        </p>
+    </div>
+
+    <div class="row">
+        <!-- Input Form -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Recipe Parameters</h5>
+                </div>
+                <div class="card-body">
+                    <form id="ai-recipe-form">
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="batch_size" class="form-label">Batch Size (Liters)</label>
+                            <input type="number" class="form-control" id="batch_size" 
+                                   value="20" step="0.1" min="1" max="1000" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="beer_style" class="form-label">Beer Style</label>
+                            <select class="form-select" id="beer_style" required>
+                                <option value="American IPA">American IPA</option>
+                                <option value="American Pale Ale">American Pale Ale</option>
+                                <option value="Wheat Beer">Wheat Beer</option>
+                                <option value="Porter">Porter</option>
+                                <option value="Stout">Stout</option>
+                                <option value="Lager">Lager</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="constraints" class="form-label">Constraints (Optional)</label>
+                            <textarea class="form-control" id="constraints" rows="3" 
+                                      placeholder="e.g., 'Simple recipe', 'Single hop', 'Low alcohol'"></textarea>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary w-100" id="generate-btn">
+                            <span class="btn-text">
+                                <i class="bi bi-magic"></i> Generate Recipe
+                            </span>
+                            <span class="loading">
+                                <i class="bi bi-hourglass-split"></i> Generating...
+                            </span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Generated Recipe -->
+        <div class="col-md-8">
+            <div id="recipe-output" class="card" style="display: none;">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0" id="recipe-name">Generated Recipe</h5>
+                    <button class="btn btn-success" id="save-recipe">
+                        <i class="bi bi-save"></i> Save to Django
+                    </button>
+                </div>
+                <div class="card-body">
+                    <!-- Recipe Stats -->
+                    <div class="recipe-stats" id="recipe-stats">
+                        <!-- Stats will be populated here -->
+                    </div>
+                    
+                    <!-- Grain Bill -->
+                    <h6><i class="bi bi-grain"></i> Grain Bill</h6>
+                    <table class="ingredient-table" id="grain-table">
+                        <thead>
+                            <tr>
+                                <th>Grain</th>
+                                <th>Weight (kg)</th>
+                                <th>Percentage</th>
+                            </tr>
+                        </thead>
+                        <tbody id="grain-tbody">
+                            <!-- Grain data will be populated here -->
+                        </tbody>
+                    </table>
+                    
+                    <!-- Hop Schedule -->
+                    <h6><i class="bi bi-flower1"></i> Hop Schedule</h6>
+                    <table class="ingredient-table" id="hop-table">
+                        <thead>
+                            <tr>
+                                <th>Hop</th>
+                                <th>Weight (g)</th>
+                                <th>Time (min)</th>
+                                <th>Use</th>
+                            </tr>
+                        </thead>
+                        <tbody id="hop-tbody">
+                            <!-- Hop data will be populated here -->
+                        </tbody>
+                    </table>
+                    
+                    <!-- Yeast -->
+                    <h6><i class="bi bi-bacteria"></i> Yeast</h6>
+                    <div class="alert alert-info" id="yeast-info">
+                        <!-- Yeast info will be populated here -->
+                    </div>
+                    
+                    <!-- Water Calculations -->
+                    <h6><i class="bi bi-droplet"></i> Water Calculations</h6>
+                    <div class="row mb-3" id="water-calcs">
+                        <!-- Water calculations will be populated here -->
+                    </div>
+                    
+                    <!-- Brewing Instructions -->
+                    <h6><i class="bi bi-list-check"></i> BIAB Brewing Instructions</h6>
+                    <div id="brewing-instructions">
+                        <!-- Instructions will be populated here -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Placeholder when no recipe -->
+            <div id="recipe-placeholder" class="card">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-cup-hot" style="font-size: 4rem; color: #dee2e6;"></i>
+                    <h5 class="mt-3 text-muted">Ready to Generate</h5>
+                    <p class="text-muted">Fill in the parameters and click "Generate Recipe"</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Beer style definitions with ranges
+    const beerStyles = {
+        'American IPA': { og: [1.056, 1.070], ibu: [40, 70], description: 'Hoppy and bitter American pale ale' },
+        'American Pale Ale': { og: [1.045, 1.060], ibu: [30, 50], description: 'Balanced hoppy ale' },
+        'Wheat Beer': { og: [1.044, 1.052], ibu: [8, 15], description: 'Light, refreshing wheat beer' },
+        'Porter': { og: [1.040, 1.052], ibu: [18, 35], description: 'Dark, malty beer' },
+        'Stout': { og: [1.042, 1.060], ibu: [25, 45], description: 'Rich, dark beer with roasted flavors' },
+        'Lager': { og: [1.044, 1.056], ibu: [8, 25], description: 'Clean, crisp bottom-fermented beer' }
+    };
+
+    let currentRecipe = null;
+
+    // Form submission handler
+    document.getElementById('ai-recipe-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const batchSize = parseFloat(document.getElementById('batch_size').value);
+        const beerStyle = document.getElementById('beer_style').value;
+        const constraints = document.getElementById('constraints').value;
+        
+        // Show loading state
+        const generateBtn = document.getElementById('generate-btn');
+        const btnText = generateBtn.querySelector('.btn-text');
+        const loading = generateBtn.querySelector('.loading');
+        
+        btnText.style.display = 'none';
+        loading.classList.add('active');
+        generateBtn.disabled = true;
+        
+        try {
+            // Check if Claude is available
+            if (typeof window.claude !== 'undefined') {
+                currentRecipe = await generateRecipeWithClaude(batchSize, beerStyle, constraints);
+            } else {
+                // Fallback to formula-based generation
+                currentRecipe = generateRecipeWithFormulas(batchSize, beerStyle, constraints);
+            }
+            
+            displayGeneratedRecipe(currentRecipe);
+            
+        } catch (error) {
+            console.error('Recipe generation failed:', error);
+            alert('Recipe generation failed. Please try again.');
+        }
+        
+        // Reset button state
+        btnText.style.display = 'inline';
+        loading.classList.remove('active');
+        generateBtn.disabled = false;
+    });
+
+    // Generate recipe using Claude AI
+    async function generateRecipeWithClaude(batchSize, beerStyle, constraints) {
+        const style = beerStyles[beerStyle];
+        
+        const prompt = `Create a detailed BIAB recipe for ${batchSize}L of ${beerStyle}.
+        
+Style Guidelines:
+- OG: ${style.og[0]}-${style.og[1]}
+- IBU: ${style.ibu[0]}-${style.ibu[1]}
+- ${style.description}
+
+Constraints: ${constraints || 'None'}
+
+Respond with JSON:
+{
+  "recipe_name": "Recipe Name",
+  "grain_bill": [{"name": "Grain", "weight_kg": 0.0, "percentage": 0.0}],
+  "hop_schedule": [{"name": "Hop", "weight_g": 0, "boil_time": 0, "use": "boil"}],
+  "yeast": {"name": "Yeast Name", "amount": "1 packet"},
+  "expected_stats": {"og": 1.050, "fg": 1.012, "ibu": 35, "abv": 5.2, "srm": 8},
+  "brewing_instructions": ["Step 1", "Step 2"],
+  "water_calculations": {"strike_volume": 0.0, "strike_temp": 0.0, "mash_temp": 67}
+}`;
+
+        const response = await window.claude.complete(prompt);
+        return JSON.parse(response);
+    }
+
+    // Generate recipe using formulas (fallback)
+    function generateRecipeWithFormulas(batchSize, beerStyle, constraints) {
+        const style = beerStyles[beerStyle];
+        const targetOG = (style.og[0] + style.og[1]) / 2;
+        const targetIBU = (style.ibu[0] + style.ibu[1]) / 2;
+        
+        // Calculate grain bill
+        const efficiency = 0.75;
+        const extractPotential = 37;
+        const pointsNeeded = (targetOG - 1) * batchSize * 1000;
+        const totalGrainKg = (pointsNeeded / (extractPotential * efficiency)) / 2.2;
+        
+        const grainBill = [
+            { name: "2-Row Pale Malt", weight_kg: Math.round(totalGrainKg * 0.8 * 100) / 100, percentage: 80 }
+        ];
+        
+        // Add specialty grains based on style
+        if (beerStyle.includes('IPA') || beerStyle.includes('Pale Ale')) {
+            grainBill.push({ name: "Crystal 40L", weight_kg: Math.round(totalGrainKg * 0.15 * 100) / 100, percentage: 15 });
+            grainBill.push({ name: "Munich Malt", weight_kg: Math.round(totalGrainKg * 0.05 * 100) / 100, percentage: 5 });
+        }
+        
+        // Calculate hop schedule
+        const hopSchedule = [
+            { name: "Cascade", weight_g: Math.round(targetIBU * batchSize * 0.7 / 10), boil_time: 60, use: "boil" },
+            { name: "Centennial", weight_g: Math.round(targetIBU * batchSize * 0.2 / 10), boil_time: 15, use: "boil" },
+            { name: "Citra", weight_g: Math.round(targetIBU * batchSize * 0.1 / 10), boil_time: 5, use: "boil" }
+        ];
+        
+        // Water calculations
+        const totalGrainWeight = grainBill.reduce((sum, grain) => sum + grain.weight_kg, 0);
+        const strikeVolume = Math.round((batchSize + totalGrainWeight * 0.96 + 2) * 10) / 10;
+        const strikeTemp = Math.round((67 + (67 - 20) * 0.2) * 10) / 10;
+        
+        return {
+            recipe_name: `AI Generated ${beerStyle} (${batchSize}L)`,
+            grain_bill: grainBill,
+            hop_schedule: hopSchedule,
+            yeast: { name: "US-05 American Ale Yeast", amount: "1 packet (11.5g)" },
+            expected_stats: {
+                og: Math.round(targetOG * 1000) / 1000,
+                fg: Math.round((targetOG - (targetOG - 1) * 0.75) * 1000) / 1000,
+                ibu: Math.round(targetIBU),
+                abv: Math.round(((targetOG - (targetOG - (targetOG - 1) * 0.75)) * 131.25) * 10) / 10,
+                srm: beerStyle.includes('Stout') ? 35 : beerStyle.includes('Porter') ? 25 : 8
+            },
+            brewing_instructions: [
+                `Heat ${strikeVolume}L of water to ${strikeTemp}°C`,
+                `Add grain bag with ${totalGrainWeight.toFixed(2)}kg total grain`,
+                "Mash at 67°C for 60 minutes",
+                "Raise temperature to 76°C for mash out",
+                "Remove grain bag and drain",
+                "Bring wort to rolling boil",
+                "Follow hop schedule",
+                "Cool to 20°C and transfer to fermenter",
+                "Pitch yeast and ferment at 18-22°C"
+            ],
+            water_calculations: {
+                strike_volume: strikeVolume,
+                strike_temp: strikeTemp,
+                mash_temp: 67
+            }
+        };
+    }
+
+    // Display the generated recipe
+    function displayGeneratedRecipe(recipe) {
+        // Hide placeholder, show recipe
+        document.getElementById('recipe-placeholder').style.display = 'none';
+        document.getElementById('recipe-output').style.display = 'block';
+        
+        // Set recipe name
+        document.getElementById('recipe-name').textContent = recipe.recipe_name;
+        
+        // Display stats
+        const statsContainer = document.getElementById('recipe-stats');
+        statsContainer.innerHTML = `
+            <div class="stat-item">
+                <div class="stat-value">${recipe.expected_stats.og.toFixed(3)}</div>
+                <div class="stat-label">OG</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">${recipe.expected_stats.fg.toFixed(3)}</div>
+                <div class="stat-label">FG</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">${recipe.expected_stats.ibu}</div>
+                <div class="stat-label">IBU</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">${recipe.expected_stats.abv.toFixed(1)}%</div>
+                <div class="stat-label">ABV</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value">${recipe.expected_stats.srm}</div>
+                <div class="stat-label">SRM</div>
+            </div>
+        `;
+        
+        // Display grain bill
+        const grainTbody = document.getElementById('grain-tbody');
+        grainTbody.innerHTML = recipe.grain_bill.map(grain => `
+            <tr>
+                <td><strong>${grain.name}</strong></td>
+                <td>${grain.weight_kg.toFixed(2)}</td>
+                <td>${grain.percentage.toFixed(1)}%</td>
+            </tr>
+        `).join('');
+        
+        // Display hop schedule
+        const hopTbody = document.getElementById('hop-tbody');
+        hopTbody.innerHTML = recipe.hop_schedule.map(hop => `
+            <tr>
+                <td><strong>${hop.name}</strong></td>
+                <td>${hop.weight_g}</td>
+                <td>${hop.boil_time}</td>
+                <td>${hop.use}</td>
+            </tr>
+        `).join('');
+        
+        // Display yeast
+        document.getElementById('yeast-info').innerHTML = `
+            <strong>${recipe.yeast.name}</strong><br>
+            Amount: ${recipe.yeast.amount}
+        `;
+        
+        // Display water calculations
+        document.getElementById('water-calcs').innerHTML = `
+            <div class="col-md-4 text-center">
+                <div class="alert alert-info">
+                    <strong>${recipe.water_calculations.strike_volume}L</strong><br>
+                    <small>Strike Volume</small>
+                </div>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="alert alert-warning">
+                    <strong>${recipe.water_calculations.strike_temp}°C</strong><br>
+                    <small>Strike Temperature</small>
+                </div>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="alert alert-success">
+                    <strong>${recipe.water_calculations.mash_temp}°C</strong><br>
+                    <small>Mash Temperature</small>
+                </div>
+            </div>
+        `;
+        
+        // Display brewing instructions
+        document.getElementById('brewing-instructions').innerHTML = recipe.brewing_instructions.map((instruction, index) => `
+            <div class="brewing-step">
+                <div class="step-number">${index + 1}</div>
+                <div>${instruction}</div>
+            </div>
+        `).join('');
+    }
+
+    // Save recipe to Django
+    document.getElementById('save-recipe').addEventListener('click', async function() {
+        if (!currentRecipe) return;
+        
+        const batchSize = parseFloat(document.getElementById('batch_size').value);
+        const beerStyle = document.getElementById('beer_style').value;
+        const constraints = document.getElementById('constraints').value;
+        
+        const saveData = {
+            name: currentRecipe.recipe_name,
+            batch_size: batchSize,
+            style_name: beerStyle,
+            grain_bill: currentRecipe.grain_bill,
+            hop_schedule: currentRecipe.hop_schedule,
+            yeast: currentRecipe.yeast,
+            expected_stats: currentRecipe.expected_stats,
+            brewing_instructions: currentRecipe.brewing_instructions.join('\n\n'),
+            constraints: constraints,
+            csrfmiddlewaretoken: document.querySelector('[name=csrfmiddlewaretoken]').value
+        };
+        
+        try {
+            const response = await fetch('/recipes/ai-save/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': saveData.csrfmiddlewaretoken
+                },
+                body: JSON.stringify(saveData)
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                alert('Recipe saved successfully!');
+                window.location.href = `/recipes/${result.recipe_id}/`;
+            } else {
+                alert('Error saving recipe: ' + result.error);
+            }
+        } catch (error) {
+            console.error('Save failed:', error);
+            alert('Failed to save recipe');
+        }
+    });
+</script>
+{% endblock %}

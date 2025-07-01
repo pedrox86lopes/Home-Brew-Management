@@ -1,0 +1,242 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Complete Step - {{ step.step_name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h4 class="mb-0">
+                        <i class="bi bi-check-circle"></i> Complete Brewing Step
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Step Info -->
+                    <div class="alert alert-info">
+                        <h5><i class="bi bi-info-circle"></i> {{ step.step_name }}</h5>
+                        <p class="mb-2">{{ step.notes }}</p>
+                        <small class="text-muted">
+                            <strong>Batch:</strong> {{ step.brew_session.batch_name }}<br>
+                            <strong>Started:</strong> {{ step.start_time|date:"H:i" }}
+                        </small>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <!-- Target vs Actual Temperature -->
+                        {% if step.target_temperature %}
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Target Temperature</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" 
+                                               value="{{ step.target_temperature }}" readonly>
+                                        <span class="input-group-text">°C</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Actual Temperature <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" 
+                                               name="actual_temperature" 
+                                               step="0.1" 
+                                               value="{{ step.target_temperature }}"
+                                               required>
+                                        <span class="input-group-text">°C</span>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        <!-- Step Notes -->
+                        <div class="mb-3">
+                            <label class="form-label">Step Notes</label>
+                            <textarea class="form-control" name="notes" rows="4">{{ step.notes }}</textarea>
+                            <div class="form-text">Add any observations or modifications for this step</div>
+                        </div>
+
+                        <!-- Step Type Specific Fields -->
+                        {% if step.step_type == 'mash' %}
+                            <div class="alert alert-warning">
+                                <h6><i class="bi bi-thermometer"></i> Mash Step Reminder</h6>
+                                <ul class="mb-0">
+                                    <li>Ensure temperature was stable throughout mash</li>
+                                    <li>Check for proper grain bed formation</li>
+                                    <li>Note any stirring or temperature adjustments</li>
+                                </ul>
+                            </div>
+                        {% elif step.step_type == 'boil' %}
+                            <div class="alert alert-info">
+                                <h6><i class="bi bi-fire"></i> Boil Addition Reminder</h6>
+                                <ul class="mb-0">
+                                    <li>Confirm vigorous rolling boil before addition</li>
+                                    <li>Note actual timing of addition</li>
+                                    <li>Record any boil-over issues</li>
+                                </ul>
+                            </div>
+                        {% elif step.step_type == 'temperature' %}
+                            <div class="alert alert-success">
+                                <h6><i class="bi bi-thermometer-half"></i> Temperature Control</h6>
+                                <ul class="mb-0">
+                                    <li>Record how long it took to reach temperature</li>
+                                    <li>Note heating method and efficiency</li>
+                                    <li>Check temperature at multiple points if possible</li>
+                                </ul>
+                            </div>
+                        {% endif %}
+
+                        <!-- Time Tracking -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Start Time</label>
+                                <input type="text" class="form-control" 
+                                       value="{{ step.start_time|date:'H:i' }}" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Current Time</label>
+                                <input type="text" class="form-control" 
+                                       value="{% now 'H:i' %}" readonly>
+                            </div>
+                        </div>
+
+                        <!-- Quick Notes Presets -->
+                        <div class="mb-3">
+                            <label class="form-label">Quick Notes</label>
+                            <div class="btn-group-vertical d-grid gap-2">
+                                <button type="button" class="btn btn-outline-success btn-sm note-preset" 
+                                        data-note="Step completed as planned - no issues">
+                                    ✓ Completed as planned
+                                </button>
+                                <button type="button" class="btn btn-outline-warning btn-sm note-preset" 
+                                        data-note="Minor temperature variation - {{ step.target_temperature|default:'target' }}°C ± 2°C">
+                                    ⚠ Minor temperature variation
+                                </button>
+                                <button type="button" class="btn btn-outline-info btn-sm note-preset" 
+                                        data-note="Extended time needed - took longer than expected">
+                                    ⏱ Extended time needed
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'brew_session_detail' step.brew_session.pk %}" 
+                               class="btn btn-outline-secondary me-md-2">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="bi bi-check-circle"></i> Complete Step
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Help Text -->
+            <div class="card mt-3">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-lightbulb"></i> Brewing Tips</h6>
+                </div>
+                <div class="card-body">
+                    {% if step.step_type == 'mash' %}
+                        <ul class="mb-0">
+                            <li>Maintain consistent temperature throughout the mash</li>
+                            <li>Stir gently every 15-20 minutes if needed</li>
+                            <li>Check for conversion with an iodine test if available</li>
+                        </ul>
+                    {% elif step.step_type == 'boil' %}
+                        <ul class="mb-0">
+                            <li>Add hops at the specified times for best results</li>
+                            <li>Maintain a rolling boil but watch for boil-overs</li>
+                            <li>Start timing when you reach a full boil</li>
+                        </ul>
+                    {% elif step.step_type == 'temperature' %}
+                        <ul class="mb-0">
+                            <li>Heat gradually to avoid scorching</li>
+                            <li>Stir frequently for even temperature distribution</li>
+                            <li>Allow a few minutes at target temperature before proceeding</li>
+                        </ul>
+                    {% else %}
+                        <ul class="mb-0">
+                            <li>Follow the step instructions carefully</li>
+                            <li>Take notes of any deviations or observations</li>
+                            <li>Record timing and temperatures when relevant</li>
+                        </ul>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle quick note presets
+    document.querySelectorAll('.note-preset').forEach(button => {
+        button.addEventListener('click', function() {
+            const noteText = this.dataset.note;
+            const notesTextarea = document.querySelector('textarea[name="notes"]');
+            
+            // Append to existing notes or replace if empty/default
+            if (notesTextarea.value === '{{ step.notes }}' || notesTextarea.value.trim() === '') {
+                notesTextarea.value = noteText;
+            } else {
+                notesTextarea.value += '\n\n' + noteText;
+            }
+            
+            // Visual feedback
+            this.classList.remove('btn-outline-success', 'btn-outline-warning', 'btn-outline-info');
+            this.classList.add('btn-success', 'btn-warning', 'btn-info');
+            setTimeout(() => {
+                this.classList.add('btn-outline-success', 'btn-outline-warning', 'btn-outline-info');
+                this.classList.remove('btn-success', 'btn-warning', 'btn-info');
+            }, 1000);
+        });
+    });
+
+    // Auto-focus on actual temperature if present
+    const tempInput = document.querySelector('input[name="actual_temperature"]');
+    if (tempInput) {
+        tempInput.focus();
+        tempInput.select();
+    }
+
+    // Form validation
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const tempInput = document.querySelector('input[name="actual_temperature"]');
+        if (tempInput && tempInput.required && !tempInput.value) {
+            e.preventDefault();
+            alert('Please enter the actual temperature for this step.');
+            tempInput.focus();
+        }
+    });
+});
+</script>
+
+<style>
+.note-preset {
+    text-align: left;
+    font-size: 0.875rem;
+}
+
+.note-preset:hover {
+    transform: translateX(5px);
+    transition: transform 0.2s ease;
+}
+
+.alert ul {
+    padding-left: 1.2rem;
+}
+
+.form-text {
+    font-size: 0.875rem;
+}
+
+.card-header.bg-light {
+    background-color: #f8f9fa !important;
+}
+</style>
+{% endblock %}

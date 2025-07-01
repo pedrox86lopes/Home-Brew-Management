@@ -1,0 +1,207 @@
+{% extends 'base/base.html' %}
+{% load humanize %}
+
+{% block title %}{{ recipe.name }} - Recipes{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>{{ recipe.name }}</h1>
+                <p class="text-muted mb-0">{{ recipe.style.name|default:"Custom Style" }} • {{ recipe.batch_size }}L batch</p>
+            </div>
+            <div class="btn-group">
+                <a href="{% url 'recipe_edit' recipe.pk %}" class="btn btn-outline-primary">
+                    <i class="bi bi-pencil"></i> Edit
+                </a>
+                <a href="{% url 'recipe_clone' recipe.pk %}" class="btn btn-outline-info">
+                    <i class="bi bi-files"></i> Clone
+                </a>
+                <a href="{% url 'recipe_scale' recipe.pk %}" class="btn btn-outline-warning">
+                    <i class="bi bi-arrows-expand"></i> Scale
+                </a>
+                <a href="{% url 'recipe_delete' recipe.pk %}" class="btn btn-outline-danger">
+                    <i class="bi bi-trash"></i> Delete
+                </a>
+            </div>
+        </div>
+        
+        {% if recipe.description %}
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h6 class="card-title">Description</h6>
+                    <p class="card-text">{{ recipe.description }}</p>
+                </div>
+            </div>
+        {% endif %}
+        
+        <!-- Grain Bill -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-grain"></i> Grain Bill 
+                    {% if grain_additions %}
+                        ({{ grain_additions|length }} ingredient{{ grain_additions|length|pluralize }})
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if grain_additions %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Grain</th>
+                                    <th>Weight</th>
+                                    <th>Percentage</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for grain_addition in grain_additions %}
+                                    <tr>
+                                        <td><strong>{{ grain_addition.grain.name }}</strong></td>
+                                        <td>{{ grain_addition.weight|floatformat:2 }}kg</td>
+                                        <td>{{ grain_addition.percentage|floatformat:1|default:"-" }}%</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center">No grains added to this recipe</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Hop Schedule -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-flower1"></i> Hop Schedule
+                    {% if hop_additions %}
+                        ({{ hop_additions|length }} addition{{ hop_additions|length|pluralize }})
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if hop_additions %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Hop</th>
+                                    <th>Weight</th>
+                                    <th>Time</th>
+                                    <th>Use</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for hop_addition in hop_additions %}
+                                    <tr>
+                                        <td><strong>{{ hop_addition.hop.name }}</strong></td>
+                                        <td>
+                                            {{ hop_addition.weight|floatformat:3 }}kg
+                                            {% if hop_addition.weight < 0.1 %}
+                                                ({{ hop_addition.weight|floatformat:0 }}g)
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ hop_addition.boil_time }} min</td>
+                                        <td>{{ hop_addition.get_use_display|default:"Boil" }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted text-center">No hops added to this recipe</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Yeast -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-bacteria"></i> Yeast</h5>
+            </div>
+            <div class="card-body">
+                {% if yeast_additions %}
+                    {% for yeast_addition in yeast_additions %}
+                        <div class="mb-2">
+                            <strong>{{ yeast_addition.yeast.name }}</strong> 
+                            <br>
+                            <small class="text-muted">
+                                {{ yeast_addition.amount }} pack(s)
+                            </small>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">No yeast added to this recipe</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if recipe.notes %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-journal-text"></i> Brewing Notes</h5>
+                </div>
+                <div class="card-body">
+                    <div style="white-space: pre-line;">{{ recipe.notes }}</div>
+                </div>
+            </div>
+        {% endif %}
+        
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Recipe Stats -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Recipe Stats</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6 mb-3">
+                        <h4 class="text-primary">{{ recipe.calculated_og|floatformat:3|default:"-" }}</h4>
+                        <small class="text-muted">Original Gravity</small>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <h4 class="text-success">{{ recipe.calculated_fg|floatformat:3|default:"-" }}</h4>
+                        <small class="text-muted">Final Gravity</small>
+                    </div>
+                </div>
+                
+                <div class="row text-center">
+                    <div class="col-6 mb-3">
+                        <h4 class="text-warning">{{ recipe.calculated_abv|floatformat:1|default:"-" }}%</h4>
+                        <small class="text-muted">ABV</small>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <h4 class="text-info">{{ recipe.calculated_ibu|floatformat:0|default:"-" }}</h4>
+                        <small class="text-muted">IBU</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-lightning"></i> Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'brewing_lab' %}" class="btn btn-success">
+                        <i class="bi bi-flask"></i> Start Brewing
+                    </a>
+                    <a href="{% url 'ai_recipe_generator_django' %}" class="btn btn-warning">
+                        <i class="bi bi-robot"></i> Generate Another Recipe
+                    </a>
+                    <a href="{% url 'recipe_list' %}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Recipes
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

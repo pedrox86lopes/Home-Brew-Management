@@ -1,0 +1,65 @@
+# Core Django
+Django==5.2
+django-extensions==4.1
+
+# Environment management
+python-decouple==3.8
+python-dotenv==1.1.0
+
+# Database
+dj-database-url==2.3.0
+psycopg2-binary==2.9.10  # PostgreSQL support
+mysqlclient==2.2.6       # MySQL support (optional)
+
+# Forms and UI
+django-crispy-forms==2.4
+crispy-bootstrap4==2025.6
+
+# Static files and media
+whitenoise==6.8.2
+Pillow==10.2.0
+
+# API and CORS
+django-cors-headers==4.7.0
+djangorestframework==3.16.0
+django-filter==25.1.2
+
+# Caching and Background Tasks
+redis==6.2.0
+django-redis==6.0.0
+celery==5.5.3
+
+# Authentication and Security
+django-allauth==65.9.0
+django-otp==1.6.0
+django-ratelimit==4.1.0
+
+# AI Integration
+openai==1.92.2
+anthropic==0.55.0
+
+# Development tools
+django-debug-toolbar==4.4.6
+factory-boy==3.3.1
+faker==30.8.2
+
+# Testing
+pytest==8.3.4
+pytest-django==4.9.0
+coverage==7.6.9
+
+# Production
+gunicorn==23.0.0
+sentry-sdk==2.19.2
+
+# Utilities
+requests==2.32.4
+python-dateutil==2.8.2
+pytz==2024.1
+
+# Data processing
+pandas==2.1.4
+numpy==1.26.4
+
+# Deployment
+docker==5.0.3

@@ -1,0 +1,266 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Add Note - {{ batch.name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1><i class="bi bi-journal-plus"></i> Add Fermentation Note</h1>
+                <a href="{% url 'fermentation_detail' batch.pk %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Batch
+                </a>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        {{ batch.name }} - Day {{ current_day }}
+                    </h5>
+                    <small class="text-muted">{{ batch.recipe.name }}</small>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <!-- Note Type -->
+                        <div class="mb-3">
+                            <label for="note_type" class="form-label">Note Type</label>
+                            <select class="form-select" name="note_type" id="note_type" required>
+                                <option value="observation" {% if request.GET.type == 'observation' %}selected{% endif %}>
+                                    General Observation
+                                </option>
+                                <option value="gravity" {% if request.GET.type == 'gravity' %}selected{% endif %}>
+                                    Gravity Reading
+                                </option>
+                                <option value="temperature" {% if request.GET.type == 'temperature' %}selected{% endif %}>
+                                    Temperature Check
+                                </option>
+                                <option value="visual" {% if request.GET.type == 'visual' %}selected{% endif %}>
+                                    Visual Inspection
+                                </option>
+                                <option value="taste" {% if request.GET.type == 'taste' %}selected{% endif %}>
+                                    Taste Test
+                                </option>
+                                <option value="problem" {% if request.GET.type == 'problem' %}selected{% endif %}>
+                                    Problem/Issue
+                                </option>
+                                <option value="milestone" {% if request.GET.type == 'milestone' %}selected{% endif %}>
+                                    Milestone
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- Title -->
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Title</label>
+                            <input type="text" class="form-control" name="title" id="title" required
+                                   placeholder="Brief description of this note...">
+                        </div>
+
+                        <!-- Content -->
+                        <div class="mb-3">
+                            <label for="content" class="form-label">Detailed Notes</label>
+                            <textarea class="form-control" name="content" id="content" rows="4" required
+                                      placeholder="Describe what you observed, tasted, or measured..."></textarea>
+                        </div>
+
+                        <!-- Measurements -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="gravity_reading" class="form-label">Gravity Reading (Optional)</label>
+                                <input type="number" class="form-control" name="gravity_reading" id="gravity_reading"
+                                       step="0.001" min="0.990" max="1.100" 
+                                       value="{{ request.GET.gravity|default:'' }}"
+                                       placeholder="e.g., 1.020">
+                                <div class="form-text">Use specific gravity format (1.xxx)</div>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="temperature_reading" class="form-label">Temperature (°C) (Optional)</label>
+                                <input type="number" class="form-control" name="temperature_reading" id="temperature_reading"
+                                       step="0.1" min="0" max="50" placeholder="e.g., 20.5">
+                                <div class="form-text">Fermentation or sample temperature</div>
+                            </div>
+                        </div>
+
+                        <!-- Photo Upload -->
+                        <div class="mb-3">
+                            <label for="photo" class="form-label">Photo (Optional)</label>
+                            <input type="file" class="form-control" name="photo" id="photo" accept="image/*">
+                            <div class="form-text">
+                                Upload a photo of krausen, clarity, color, or any visual observation
+                            </div>
+                        </div>
+
+                        <!-- Important Flag -->
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="is_important" id="is_important">
+                                <label class="form-check-label" for="is_important">
+                                    <i class="bi bi-star"></i> Mark as important note
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Quick Templates -->
+                        <div class="card bg-light mb-4">
+                            <div class="card-header">
+                                <h6 class="mb-0">Quick Templates</h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="card-text small">Click to fill in common observations:</p>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="useTemplate('active')">
+                                        Active Fermentation
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="useTemplate('krausen')">
+                                        Krausen Formed
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="useTemplate('slow')">
+                                        Activity Slowing
+                                    </button>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="useTemplate('clear')">
+                                        Clearing
+                                    </button>
+                                    <button type="button" class="btn btn-outline-warning btn-sm" onclick="useTemplate('stuck')">
+                                        Possible Stuck
+                                    </button>
+                                    <button type="button" class="btn btn-outline-success btn-sm" onclick="useTemplate('complete')">
+                                        Fermentation Complete
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Buttons -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'fermentation_detail' batch.pk %}" class="btn btn-outline-secondary me-md-2">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-circle"></i> Add Note
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Current Batch Info -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-info-circle"></i> Current Batch Status</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-2">
+                                <strong>Status:</strong> {{ batch.get_status_display }}
+                            </div>
+                            <div class="mb-2">
+                                <strong>Stage:</strong> {{ batch.get_stage_display }}
+                            </div>
+                            <div class="mb-2">
+                                <strong>Days Fermenting:</strong> {{ batch.days_fermenting }}
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-2">
+                                <strong>Starting Gravity:</strong> {{ batch.starting_gravity|floatformat:3 }}
+                            </div>
+                            {% if batch.current_gravity %}
+                                <div class="mb-2">
+                                    <strong>Current Gravity:</strong> {{ batch.current_gravity|floatformat:3 }}
+                                </div>
+                            {% endif %}
+                            <div class="mb-2">
+                                <strong>Fermentation Temp:</strong> {{ batch.fermentation_temp }}°C
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Quick templates for common observations
+    const templates = {
+        active: {
+            title: "Active Fermentation Started",
+            content: "Visible fermentation activity with bubbling through airlock. Krausen beginning to form on surface.",
+            note_type: "observation"
+        },
+        krausen: {
+            title: "Krausen Formation",
+            content: "Thick krausen layer formed on surface. Active fermentation with vigorous bubbling. Beer has creamy foam head.",
+            note_type: "visual"
+        },
+        slow: {
+            title: "Fermentation Activity Slowing",
+            content: "Bubbling frequency decreased significantly. Krausen starting to fall back into beer. Visual activity reduced.",
+            note_type: "observation"
+        },
+        clear: {
+            title: "Beer Starting to Clear",
+            content: "Beer beginning to clear from bottom up. Yeast settling out. Color becoming more distinct.",
+            note_type: "visual"
+        },
+        stuck: {
+            title: "Possible Stuck Fermentation",
+            content: "No visible activity for several days. Gravity reading unchanged. May need to rouse yeast or check temperature.",
+            note_type: "problem"
+        },
+        complete: {
+            title: "Fermentation Complete",
+            content: "No visible activity. Gravity reading stable for 3+ days. Beer clearing well. Ready for next stage.",
+            note_type: "milestone"
+        }
+    };
+
+    function useTemplate(templateName) {
+        const template = templates[templateName];
+        if (template) {
+            document.getElementById('title').value = template.title;
+            document.getElementById('content').value = template.content;
+            document.getElementById('note_type').value = template.note_type;
+        }
+    }
+
+    // Auto-calculate ABV when gravity is entered
+    document.getElementById('gravity_reading').addEventListener('input', function() {
+        const og = {{ batch.starting_gravity }};
+        const fg = parseFloat(this.value);
+        
+        if (fg && fg > 0.990 && fg < og) {
+            const abv = (og - fg) * 131.25;
+            const attenuation = ((og - fg) / (og - 1)) * 100;
+            
+            // Show calculated values in form text
+            const helpText = `Current ABV: ${abv.toFixed(1)}% • Attenuation: ${attenuation.toFixed(0)}%`;
+            this.nextElementSibling.textContent = helpText;
+        } else {
+            this.nextElementSibling.textContent = 'Use specific gravity format (1.xxx)';
+        }
+    });
+
+    // Pre-fill based on URL parameters
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const noteType = urlParams.get('type');
+        const gravity = urlParams.get('gravity');
+        
+        if (noteType) {
+            document.getElementById('note_type').value = noteType;
+        }
+        
+        if (gravity) {
+            document.getElementById('gravity_reading').value = gravity;
+            document.getElementById('gravity_reading').dispatchEvent(new Event('input'));
+        }
+    });
+</script>
+{% endblock %}

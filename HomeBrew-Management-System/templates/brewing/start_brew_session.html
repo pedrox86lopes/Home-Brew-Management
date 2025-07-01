@@ -1,0 +1,234 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Start Brewing - {{ recipe.name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="mb-0">
+                        <i class="bi bi-play-fill"></i> Start Brewing Session
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <!-- Recipe Overview -->
+                    <div class="alert alert-info">
+                        <h5><i class="bi bi-info-circle"></i> Recipe: {{ recipe.name }}</h5>
+                        <div class="row">
+                            <div class="col-md-3">
+                                <strong>Style:</strong> {{ recipe.style.name }}
+                            </div>
+                            <div class="col-md-3">
+                                <strong>OG:</strong> {{ recipe.calculated_og|floatformat:3|default:"-" }}
+                            </div>
+                            <div class="col-md-3">
+                                <strong>IBU:</strong> {{ recipe.calculated_ibu|floatformat:0|default:"-" }}
+                            </div>
+                            <div class="col-md-3">
+                                <strong>ABV:</strong> {{ recipe.calculated_abv|floatformat:1|default:"-" }}%
+                            </div>
+                        </div>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label for="batch_name" class="form-label">Batch Name</label>
+                            <input type="text" class="form-control" id="batch_name" 
+                                   name="batch_name" value="{{ suggested_name }}" required>
+                            <div class="form-text">Give your batch a unique name for tracking</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="actual_batch_size" class="form-label">Actual Batch Size (L)</label>
+                            <input type="number" class="form-control" id="actual_batch_size" 
+                                   name="actual_batch_size" value="{{ recipe.batch_size }}" 
+                                   step="0.1" min="1" required>
+                            <div class="form-text">Final volume you plan to brew (recipe: {{ recipe.batch_size }}L)</div>
+                        </div>
+
+                        <!-- Recipe Summary -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h6 class="mb-0">Recipe Summary</h6>
+                            </div>
+                            <div class="card-body">
+                                <!-- Grain Bill -->
+                                <h6><i class="bi bi-grain"></i> Grain Bill</h6>
+                                <div class="table-responsive mb-3">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Grain</th>
+                                                <th>Weight</th>
+                                                <th>%</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for grain_addition in recipe.grainaddition_set.all %}
+                                                <tr>
+                                                    <td>{{ grain_addition.grain.name }}</td>
+                                                    <td>{{ grain_addition.weight|floatformat:2 }}kg</td>
+                                                    <td>{{ grain_addition.percentage|floatformat:1|default:"-" }}%</td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- Hop Schedule -->
+                                <h6><i class="bi bi-flower1"></i> Hop Schedule</h6>
+                                <div class="table-responsive mb-3">
+                                    <table class="table table-sm">
+                                        <thead>
+                                            <tr>
+                                                <th>Hop</th>
+                                                <th>Weight</th>
+                                                <th>Time</th>
+                                                <th>Use</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for hop_addition in recipe.hopaddition_set.all %}
+                                                <tr>
+                                                    <td>{{ hop_addition.hop.name }}</td>
+                                                    <td>{{ hop_addition.weight|floatformat:0 }}g</td>
+                                                    <td>{{ hop_addition.boil_time }} min</td>
+                                                    <td>{{ hop_addition.get_use_display }}</td>
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <!-- Yeast -->
+                                <h6><i class="bi bi-bacteria"></i> Yeast</h6>
+                                {% for yeast_addition in recipe.yeastaddition_set.all %}
+                                    <p class="mb-1">
+                                        <strong>{{ yeast_addition.yeast.name }}</strong> - {{ yeast_addition.amount }} pack(s)
+                                    </p>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- BIAB Process Overview -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="bi bi-list-check"></i> BIAB Process Overview</h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted">Your brewing session will include these automated steps:</p>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <ul class="list-unstyled">
+                                            <li><i class="bi bi-thermometer text-danger"></i> Heat Strike Water</li>
+                                            <li><i class="bi bi-hourglass text-warning"></i> Mash (60 min)</li>
+                                            <li><i class="bi bi-thermometer text-danger"></i> Mash Out</li>
+                                            <li><i class="bi bi-arrow-up text-info"></i> Remove Grain Bag</li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <ul class="list-unstyled">
+                                            <li><i class="bi bi-fire text-danger"></i> Boil (60 min)</li>
+                                            <li><i class="bi bi-flower1 text-success"></i> Hop Additions</li>
+                                            <li><i class="bi bi-snow text-primary"></i> Cool Wort</li>
+                                            <li><i class="bi bi-bacteria text-warning"></i> Pitch Yeast</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Pre-Brew Checklist -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="bi bi-check2-square"></i> Pre-Brew Checklist</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="check1">
+                                            <label class="form-check-label" for="check1">
+                                                All ingredients available
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="check2">
+                                            <label class="form-check-label" for="check2">
+                                                Equipment cleaned and sanitized
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="check3">
+                                            <label class="form-check-label" for="check3">
+                                                Brewing vessel ready
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="check4">
+                                            <label class="form-check-label" for="check4">
+                                                Fermenter cleaned and ready
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="check5">
+                                            <label class="form-check-label" for="check5">
+                                                Yeast ready (at room temp)
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="check6">
+                                            <label class="form-check-label" for="check6">
+                                                Time allocated (4-6 hours)
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'brewing_lab' %}" class="btn btn-outline-secondary me-md-2">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-success btn-lg" id="startBrewingBtn" disabled>
+                                <i class="bi bi-play-fill"></i> Start Brewing Session
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.form-check-input[type="checkbox"]');
+    const startButton = document.getElementById('startBrewingBtn');
+    
+    function updateButtonState() {
+        const allChecked = Array.from(checkboxes).every(checkbox => checkbox.checked);
+        startButton.disabled = !allChecked;
+        
+        if (allChecked) {
+            startButton.classList.remove('btn-secondary');
+            startButton.classList.add('btn-success');
+        } else {
+            startButton.classList.remove('btn-success');
+            startButton.classList.add('btn-secondary');
+        }
+    }
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateButtonState);
+    });
+});
+</script>
+{% endblock %}

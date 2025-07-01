@@ -1,0 +1,146 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Dashboard - HomeBrew Management{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h1 class="mb-4">
+            <i class="bi bi-house"></i> 
+            {% if user.is_authenticated %}
+                Welcome back, {{ user.first_name|default:user.username }}!
+            {% else %}
+                Welcome to HomeBrew Management
+            {% endif %}
+        </h1>
+    </div>
+</div>
+
+{% if user.is_authenticated %}
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Total Recipes</h5>
+                            <h3>0</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-book fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Active Brews</h5>
+                            <h3>0</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-flask fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">This Month</h5>
+                            <h3>0</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-calendar-month fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Avg Efficiency</h5>
+                            <h3>75%</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="bi bi-percent fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent Activity</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">No recent activity. Start by creating your first recipe!</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-lightning"></i> Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'recipe_create' %}" class="btn btn-primary">
+                            <i class="bi bi-plus-circle"></i> New Recipe
+                        </a>
+                        <a href="{% url 'recipe_generator' %}" class="btn btn-success">
+                            <i class="bi bi-magic"></i> Generate Recipe
+                        </a>
+                        <a href="{% url 'ai_recipe_generator_django' %}" class="btn btn-warning">
+                            <i class="bi bi-robot"></i> AI Recipe Generator
+                        </a>
+                        <a href="{% url 'brewing_lab' %}" class="btn btn-info">
+                            <i class="bi bi-flask"></i> Brewing Lab
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+{% else %}
+    <!-- Welcome message for non-authenticated users -->
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="jumbotron bg-light p-5 rounded">
+                <h2 class="display-4">🍻 Welcome to HomeBrew Management</h2>
+                <p class="lead">The complete solution for managing your home brewing with BIAB (Brew-In-A-Bag) method.</p>
+                <hr class="my-4">
+                <p>Track recipes, manage inventory, monitor brewing sessions, and analyze your brewing performance.</p>
+                <div class="mt-4">
+                    <a class="btn btn-primary btn-lg me-3" href="{% url 'signup' %}" role="button">
+                        <i class="bi bi-person-plus"></i> Get Started
+                    </a>
+                    <a class="btn btn-outline-primary btn-lg" href="{% url 'login' %}" role="button">
+                        <i class="bi bi-box-arrow-in-right"></i> Login
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+{% endblock %}

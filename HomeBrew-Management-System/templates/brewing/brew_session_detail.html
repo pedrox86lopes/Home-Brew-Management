@@ -1,0 +1,589 @@
+{% extends 'base/base.html' %}
+
+{% block title %}{{ session.batch_name }} - Brewing Session{% endblock %}
+
+{% block extra_css %}
+<style>
+.brewing-step {
+    border-left: 4px solid #dee2e6;
+    padding-left: 1rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.brewing-step.completed {
+    border-left-color: #28a745;
+    background-color: rgba(40, 167, 69, 0.1);
+}
+
+.brewing-step.active {
+    border-left-color: #ffc107;
+    background-color: rgba(255, 193, 7, 0.1);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.timer-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px;
+}
+
+.timer-display {
+    font-size: 2rem;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+}
+
+.step-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.reading-card {
+    border-left: 4px solid #0d6efd;
+}
+
+.temp-reading {
+    border-left-color: #dc3545;
+}
+
+.gravity-reading {
+    border-left-color: #198754;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1><i class="bi bi-flask"></i> {{ session.batch_name }}</h1>
+            <p class="text-muted mb-0">
+                {{ session.recipe.name }} • {{ session.actual_batch_size }}L • 
+                <span class="badge bg-{% if session.status == 'active' %}primary{% elif session.status == 'fermenting' %}success{% else %}secondary{% endif %}">
+                    {{ session.get_status_display }}
+                </span>
+            </p>
+        </div>
+        <div class="btn-group">
+            <a href="{% url 'brewing_lab' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to Lab
+            </a>
+            {% if session.current_stage == 'cooling' and session.status == 'active' %}
+                <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#startFermentationModal">
+                    <i class="bi bi-droplet"></i> Start Fermentation
+                </button>
+            {% endif %}
+            <button class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#addReadingModal">
+                <i class="bi bi-plus-circle"></i> Add Reading
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Left Column - Brewing Steps -->
+        <div class="col-md-8">
+            <!-- Current Step Alert -->
+            {% if current_step %}
+                <div class="alert alert-warning mb-4">
+                    <div class="d-flex align-items-center">
+                        <div class="step-icon bg-warning text-dark me-3">
+                            <i class="bi bi-clock"></i>
+                        </div>
+                        <div>
+                            <h5 class="alert-heading mb-1">Current Step: {{ current_step.step_name }}</h5>
+                            <p class="mb-0">{{ current_step.notes }}</p>
+                            {% if current_step.target_temperature %}
+                                <small class="text-muted">Target Temperature: {{ current_step.target_temperature }}°C</small>
+                            {% endif %}
+                        </div>
+                        <div class="ms-auto">
+                            <a href="{% url 'complete_brew_step' current_step.pk %}" class="btn btn-warning">
+                                <i class="bi bi-check-circle"></i> Complete Step
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Active Timers -->
+            {% if active_timers %}
+                <div class="row mb-4">
+                    {% for timer in active_timers %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card timer-card">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">{{ timer.name }}</h6>
+                                    <div class="timer-display" id="timer-{{ timer.id }}">
+                                        --:--
+                                    </div>
+                                    <small class="text-light">{{ timer.duration_minutes }} minutes total</small>
+                                    <div class="mt-2">
+                                        <a href="{% url 'stop_timer' timer.id %}" class="btn btn-light btn-sm">
+                                            <i class="bi bi-stop-fill"></i> Stop Timer
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            <!-- Brewing Steps -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-list-check"></i> Brewing Steps</h5>
+                </div>
+                <div class="card-body">
+                    {% for step in steps %}
+                        <div class="brewing-step {% if step.is_completed %}completed{% elif step == current_step %}active{% endif %}">
+                            <div class="d-flex align-items-center">
+                                <div class="step-icon me-3 {% if step.is_completed %}bg-success text-white{% elif step == current_step %}bg-warning text-dark{% else %}bg-light text-muted{% endif %}">
+                                    {% if step.is_completed %}
+                                        <i class="bi bi-check"></i>
+                                    {% elif step == current_step %}
+                                        <i class="bi bi-clock"></i>
+                                    {% else %}
+                                        {{ forloop.counter }}
+                                    {% endif %}
+                                </div>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">{{ step.step_name }}</h6>
+                                    <p class="mb-1 text-muted">{{ step.notes }}</p>
+                                    {% if step.target_temperature %}
+                                        <small class="text-info">
+                                            <i class="bi bi-thermometer"></i> Target: {{ step.target_temperature }}°C
+                                            {% if step.actual_temperature %}
+                                                | Actual: {{ step.actual_temperature }}°C
+                                            {% endif %}
+                                        </small>
+                                    {% endif %}
+                                    {% if step.is_completed %}
+                                        <br><small class="text-muted">
+                                            <i class="bi bi-clock-history"></i> 
+                                            Completed: {{ step.end_time|date:"H:i" }}
+                                            {% if step.duration_minutes %}
+                                                ({{ step.duration_minutes }} min)
+                                            {% endif %}
+                                        </small>
+                                    {% endif %}
+                                </div>
+                                {% if step == current_step %}
+                                    <div class="ms-2">
+                                        <button class="btn btn-outline-primary btn-sm me-2" 
+                                                data-bs-toggle="modal" data-bs-target="#timerModal"
+                                                data-step-name="{{ step.step_name }}">
+                                            <i class="bi bi-stopwatch"></i> Timer
+                                        </button>
+                                        <a href="{% url 'complete_brew_step' step.pk %}" class="btn btn-warning btn-sm">
+                                            <i class="bi bi-check"></i> Complete
+                                        </a>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Brewing Progress -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-graph-up"></i> Brewing Progress</h6>
+                </div>
+                <div class="card-body">
+                    {% with completed_steps=steps|length total_steps=steps|length %}
+                        {% widthratio completed_steps total_steps 100 as progress_percent %}
+                        <div class="progress mb-2" style="height: 20px;">
+                            <div class="progress-bar bg-primary" style="width: {{ progress_percent }}%"></div>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <small class="text-muted">{{ completed_steps }} of {{ total_steps }} steps completed</small>
+                            <small class="text-muted">{{ progress_percent }}%</small>
+                        </div>
+                    {% endwith %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column - Readings & Info -->
+        <div class="col-md-4">
+            <!-- Session Info -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-info-circle"></i> Session Info</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6 mb-2">
+                            <h5 class="text-primary">{{ session.days_since_start }}</h5>
+                            <small class="text-muted">Days Ago</small>
+                        </div>
+                        <div class="col-6 mb-2">
+                            <h5 class="text-success">{{ session.actual_batch_size }}L</h5>
+                            <small class="text-muted">Batch Size</small>
+                        </div>
+                    </div>
+                    
+                    {% if session.actual_og %}
+                        <div class="row text-center">
+                            <div class="col-6 mb-2">
+                                <h5 class="text-warning">{{ session.actual_og|floatformat:3 }}</h5>
+                                <small class="text-muted">Original Gravity</small>
+                            </div>
+                            <div class="col-6 mb-2">
+                                <h5 class="text-info">{{ session.actual_efficiency|floatformat:1|default:"-" }}%</h5>
+                                <small class="text-muted">Efficiency</small>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Recent Readings -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-clipboard-data"></i> Recent Readings</h6>
+                </div>
+                <div class="card-body">
+                    <h6 class="text-muted">Temperature</h6>
+                    {% for reading in temp_readings|slice:":3" %}
+                        <div class="card reading-card temp-reading mb-2">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between">
+                                    <span><strong>{{ reading.temperature }}°C</strong></span>
+                                    <small class="text-muted">{{ reading.timestamp|date:"H:i" }}</small>
+                                </div>
+                                {% if reading.notes %}
+                                    <small class="text-muted">{{ reading.notes }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% empty %}
+                        <p class="text-muted small">No temperature readings yet</p>
+                    {% endfor %}
+
+                    <h6 class="text-muted mt-3">Gravity</h6>
+                    {% for reading in gravity_readings|slice:":3" %}
+                        <div class="card reading-card gravity-reading mb-2">
+                            <div class="card-body py-2">
+                                <div class="d-flex justify-content-between">
+                                    <span><strong>SG {{ reading.gravity|floatformat:3 }}</strong></span>
+                                    <small class="text-muted">{{ reading.timestamp|date:"H:i" }}</small>
+                                </div>
+                                {% if reading.notes %}
+                                    <small class="text-muted">{{ reading.notes }}</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% empty %}
+                        <p class="text-muted small">No gravity readings yet</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="bi bi-lightning"></i> Quick Actions</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#tempModal">
+                            <i class="bi bi-thermometer"></i> Add Temperature
+                        </button>
+                        <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#gravityModal">
+                            <i class="bi bi-droplet"></i> Add Gravity
+                        </button>
+                        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#timerModal">
+                            <i class="bi bi-stopwatch"></i> Start Timer
+                        </button>
+                        <a href="{% url 'update_brew_session' session.pk %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-gear"></i> Edit Session
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Timer Modal -->
+<div class="modal fade" id="timerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Start Timer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'start_timer' session.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Timer Name</label>
+                        <input type="text" class="form-control" name="name" id="timerName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Duration (minutes)</label>
+                        <input type="number" class="form-control" name="duration" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Quick Presets</label>
+                        <div class="btn-group w-100" role="group">
+                            <button type="button" class="btn btn-outline-secondary preset-btn" data-minutes="60">Mash (60)</button>
+                            <button type="button" class="btn btn-outline-secondary preset-btn" data-minutes="15">Hop (15)</button>
+                            <button type="button" class="btn btn-outline-secondary preset-btn" data-minutes="5">Aroma (5)</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Start Timer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Temperature Modal -->
+<div class="modal fade" id="tempModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Temperature Reading</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'add_temperature_reading' session.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Temperature (°C)</label>
+                        <input type="number" class="form-control" name="temperature" step="0.1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Reading Type</label>
+                        <select class="form-select" name="reading_type">
+                            <option value="mash">Mash Temperature</option>
+                            <option value="boil">Boil Temperature</option>
+                            <option value="fermentation">Fermentation Temperature</option>
+                            <option value="ambient">Ambient Temperature</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" name="notes" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Add Reading</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Gravity Modal -->
+<div class="modal fade" id="gravityModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Gravity Reading</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'add_gravity_reading' session.pk %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Specific Gravity</label>
+                        <input type="number" class="form-control" name="gravity" step="0.001" min="0.990" max="1.200" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Reading Type</label>
+                        <select class="form-select" name="reading_type">
+                            <option value="original">Original Gravity (OG)</option>
+                            <option value="progress">Fermentation Progress</option>
+                            <option value="final">Final Gravity (FG)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Sample Temperature (°C)</label>
+                        <input type="number" class="form-control" name="temperature" step="0.1">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" name="notes" rows="2"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success">Add Reading</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Start Fermentation Modal -->
+{% if session.current_stage == 'cooling' and session.status == 'active' %}
+<div class="modal fade" id="startFermentationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Start Fermentation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Ready to start fermentation for <strong>{{ session.batch_name }}</strong>?</p>
+                <p class="text-muted">This will move your batch to the fermentation lab where you can track progress, add notes, and monitor temperature/gravity.</p>
+                <div class="alert alert-info">
+                                            <li>Transferred wort to fermenter</li>
+                        <li>Pitched yeast</li>
+                        <li>Recorded original gravity (OG)</li>
+                        <li>Set fermentation temperature</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{% url 'start_fermentation' session.pk %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-droplet"></i> Start Fermentation
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Timer functionality
+function updateTimers() {
+    {% for timer in active_timers %}
+        updateTimer({{ timer.id }}, {{ timer.duration_minutes }}, '{{ timer.start_time|date:"c" }}');
+    {% endfor %}
+}
+
+function updateTimer(timerId, durationMinutes, startTime) {
+    const startDateTime = new Date(startTime);
+    const now = new Date();
+    const elapsed = (now - startDateTime) / 1000 / 60; // minutes
+    const remaining = Math.max(0, durationMinutes - elapsed);
+    
+    const minutes = Math.floor(remaining);
+    const seconds = Math.floor((remaining - minutes) * 60);
+    
+    const display = document.getElementById(`timer-${timerId}`);
+    if (display) {
+        display.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        
+        // Change color when time is running out
+        const card = display.closest('.timer-card');
+        if (remaining <= 5) {
+            card.style.background = 'linear-gradient(135deg, #dc3545 0%, #c82333 100%)';
+        } else if (remaining <= 15) {
+            card.style.background = 'linear-gradient(135deg, #ffc107 0%, #e0a800 100%)';
+        }
+        
+        // Show notification when timer finishes
+        if (remaining <= 0 && !card.dataset.notified) {
+            card.dataset.notified = 'true';
+            if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification('Brewing Timer Finished!', {
+                    body: `Timer "${display.closest('.card-body').querySelector('.card-title').textContent}" has finished.`,
+                    icon: '/static/img/timer-icon.png'
+                });
+            }
+            // Play sound
+            playTimerSound();
+        }
+    }
+}
+
+function playTimerSound() {
+    // Simple beep sound using Web Audio API
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = 800;
+        oscillator.type = 'sine';
+        
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 1);
+    } catch (e) {
+        console.log('Audio not supported');
+    }
+}
+
+// Update timers every second
+if (document.querySelectorAll('.timer-card').length > 0) {
+    updateTimers();
+    setInterval(updateTimers, 1000);
+}
+
+// Request notification permission
+if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+}
+
+// Timer modal functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const timerModal = document.getElementById('timerModal');
+    const timerNameInput = document.getElementById('timerName');
+    const durationInput = document.querySelector('input[name="duration"]');
+    
+    // Handle preset buttons
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const minutes = this.dataset.minutes;
+            const name = this.textContent.split(' (')[0];
+            
+            timerNameInput.value = name;
+            durationInput.value = minutes;
+        });
+    });
+    
+    // Auto-fill timer name based on current step
+    timerModal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        if (button && button.dataset.stepName) {
+            timerNameInput.value = button.dataset.stepName;
+        }
+    });
+});
+
+// Auto-refresh readings every 30 seconds
+setInterval(function() {
+    // This would typically use AJAX to refresh readings
+    // For now, we'll just indicate when readings might be stale
+    const readings = document.querySelectorAll('.reading-card');
+    readings.forEach(card => {
+        const timeElement = card.querySelector('.text-muted');
+        if (timeElement) {
+            // Add a subtle indicator that readings might be stale after 10 minutes
+            const timeText = timeElement.textContent;
+            // Implementation would check actual timestamp and compare
+        }
+    });
+}, 30000);
+</script>
+{% endblock %}
+                        

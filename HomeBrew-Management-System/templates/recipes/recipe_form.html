@@ -1,0 +1,354 @@
+{% extends 'base/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+    {% if is_create %}Create Recipe{% elif is_edit %}Edit {{ recipe.name }}{% endif %} - HomeBrew Management
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .formset-form {
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background-color: #f8f9fa;
+    }
+    .formset-form.empty-form {
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                {% if is_create %}<i class="bi bi-plus-circle"></i> Create Recipe{% endif %}
+                {% if is_edit %}<i class="bi bi-pencil"></i> Edit Recipe{% endif %}
+            </h1>
+            <a href="{% if recipe %}{% url 'recipe_detail' recipe.pk %}{% else %}{% url 'recipe_list' %}{% endif %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back
+            </a>
+        </div>
+    </div>
+</div>
+
+<form method="post" id="recipe-form">
+    {% csrf_token %}
+    
+    <div class="row">
+        <div class="col-md-8">
+            <!-- Basic Recipe Info -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Recipe Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            {{ form.name|as_crispy_field }}
+                        </div>
+                        <div class="col-md-6">
+                            {{ form.style|as_crispy_field }}
+                        </div>
+                    </div>
+                    
+                    {{ form.description|as_crispy_field }}
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            {{ form.batch_size|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            {{ form.efficiency|as_crispy_field }}
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-check form-switch mt-4">
+                                {{ form.is_favorite }}
+                                <label class="form-check-label" for="{{ form.is_favorite.id_for_label }}">
+                                    Favorite Recipe
+                                </label>
+                            </div>
+                            <div class="form-check form-switch">
+                                {{ form.is_public }}
+                                <label class="form-check-label" for="{{ form.is_public.id_for_label }}">
+                                    Public Recipe
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Grain Bill -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-grain"></i> Grain Bill</h5>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="add-grain">
+                        <i class="bi bi-plus"></i> Add Grain
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="grain-formset">
+                        {{ grain_formset.management_form }}
+                        {% for form in grain_formset %}
+                            <div class="formset-form {% if form.empty_form %}empty-form{% endif %}">
+                                {% if not form.empty_form %}
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6>Grain {{ forloop.counter }}</h6>
+                                        <button type="button" class="btn btn-outline-danger btn-sm delete-form">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                {% endif %}
+                                
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        {{ form.grain|as_crispy_field }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        {{ form.weight|as_crispy_field }}
+                                    </div>
+                                </div>
+                                
+                                {% for hidden in form.hidden_fields %}
+                                    {{ hidden }}
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Hop Schedule -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-flower1"></i> Hop Schedule</h5>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="add-hop">
+                        <i class="bi bi-plus"></i> Add Hop
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="hop-formset">
+                        {{ hop_formset.management_form }}
+                        {% for form in hop_formset %}
+                            <div class="formset-form {% if form.empty_form %}empty-form{% endif %}">
+                                {% if not form.empty_form %}
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6>Hop Addition {{ forloop.counter }}</h6>
+                                        <button type="button" class="btn btn-outline-danger btn-sm delete-form">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                {% endif %}
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        {{ form.hop|as_crispy_field }}
+                                    </div>
+                                    <div class="col-md-2">
+                                        {{ form.weight|as_crispy_field }}
+                                    </div>
+                                    <div class="col-md-2">
+                                        {{ form.boil_time|as_crispy_field }}
+                                    </div>
+                                    <div class="col-md-2">
+                                        {{ form.use|as_crispy_field }}
+                                    </div>
+                                </div>
+                                
+                                {% for hidden in form.hidden_fields %}
+                                    {{ hidden }}
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Yeast -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-bacteria"></i> Yeast</h5>
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="add-yeast">
+                        <i class="bi bi-plus"></i> Add Yeast
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="yeast-formset">
+                        {{ yeast_formset.management_form }}
+                        {% for form in yeast_formset %}
+                            <div class="formset-form {% if form.empty_form %}empty-form{% endif %}">
+                                {% if not form.empty_form %}
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h6>Yeast {{ forloop.counter }}</h6>
+                                        <button type="button" class="btn btn-outline-danger btn-sm delete-form">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                {% endif %}
+                                
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        {{ form.yeast|as_crispy_field }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        {{ form.amount|as_crispy_field }}
+                                    </div>
+                                </div>
+                                
+                                {% for hidden in form.hidden_fields %}
+                                    {{ hidden }}
+                                {% endfor %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Brewing Notes -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-journal-text"></i> Brewing Notes</h5>
+                </div>
+                <div class="card-body">
+                    {{ form.notes|as_crispy_field }}
+                </div>
+            </div>
+            
+        </div>
+        
+        <div class="col-md-4">
+            <!-- Recipe Calculator -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-calculator"></i> Recipe Calculator</h5>
+                </div>
+                <div class="card-body">
+                    <div id="recipe-stats">
+                        <div class="text-center text-muted">
+                            <i class="bi bi-hourglass-split"></i>
+                            <p>Add ingredients to see calculations</p>
+                        </div>
+                    </div>
+                    
+                    <button type="button" class="btn btn-outline-info btn-sm w-100 mt-3" id="calculate-recipe">
+                        <i class="bi bi-arrow-clockwise"></i> Recalculate
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle"></i> 
+                            {% if is_create %}Create Recipe{% else %}Update Recipe{% endif %}
+                        </button>
+                        <a href="{% if recipe %}{% url 'recipe_detail' recipe.pk %}{% else %}{% url 'recipe_list' %}{% endif %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Formset management
+    function updateFormsetIndex(formset, index) {
+        const forms = formset.querySelectorAll('.formset-form:not(.empty-form)');
+        forms.forEach((form, i) => {
+            const inputs = form.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                if (input.name) {
+                    input.name = input.name.replace(/\d+/, i);
+                    input.id = input.id.replace(/\d+/, i);
+                }
+            });
+            
+            const labels = form.querySelectorAll('label[for]');
+            labels.forEach(label => {
+                if (label.getAttribute('for')) {
+                    label.setAttribute('for', label.getAttribute('for').replace(/\d+/, i));
+                }
+            });
+        });
+        
+        // Update total forms count
+        const totalForms = formset.querySelector('input[name$="-TOTAL_FORMS"]');
+        if (totalForms) {
+            totalForms.value = forms.length;
+        }
+    }
+    
+    function addFormsetForm(formsetId, emptyFormId) {
+        const formset = document.getElementById(formsetId);
+        const emptyForm = document.querySelector(`#${formsetId} .empty-form`);
+        const newForm = emptyForm.cloneNode(true);
+        
+        newForm.classList.remove('empty-form');
+        newForm.style.display = 'block';
+        
+        // Add delete button
+        const deleteBtn = document.createElement('div');
+        deleteBtn.className = 'd-flex justify-content-between align-items-center mb-2';
+        deleteBtn.innerHTML = `
+            <h6>New Addition</h6>
+            <button type="button" class="btn btn-outline-danger btn-sm delete-form">
+                <i class="bi bi-trash"></i>
+            </button>
+        `;
+        newForm.insertBefore(deleteBtn, newForm.firstChild);
+        
+        formset.appendChild(newForm);
+        updateFormsetIndex(formset);
+        
+        // Add delete functionality
+        newForm.querySelector('.delete-form').addEventListener('click', function() {
+            newForm.remove();
+            updateFormsetIndex(formset);
+        });
+    }
+    
+    // Event listeners
+    document.getElementById('add-grain').addEventListener('click', function() {
+        addFormsetForm('grain-formset');
+    });
+    
+    document.getElementById('add-hop').addEventListener('click', function() {
+        addFormsetForm('hop-formset');
+    });
+    
+    document.getElementById('add-yeast').addEventListener('click', function() {
+        addFormsetForm('yeast-formset');
+    });
+    
+    // Delete form handlers
+    document.querySelectorAll('.delete-form').forEach(button => {
+        button.addEventListener('click', function() {
+            const form = this.closest('.formset-form');
+            const formset = form.closest('[id$="-formset"]');
+            form.remove();
+            updateFormsetIndex(formset);
+        });
+    });
+    
+    // Recipe calculator (simplified)
+    document.getElementById('calculate-recipe').addEventListener('click', function() {
+        // This would implement real-time recipe calculations
+        // For now, just show a placeholder
+        document.getElementById('recipe-stats').innerHTML = `
+            <div class="text-center">
+                <small class="text-muted">Calculations will be performed on save</small>
+            </div>
+        `;
+    });
+</script>
+{% endblock %}

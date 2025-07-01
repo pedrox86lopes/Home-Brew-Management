@@ -1,0 +1,34 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Profile - HomeBrew Management{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="bi bi-person"></i> Profile Settings
+                </h4>
+            </div>
+            <div class="card-body">
+                <p><strong>Username:</strong> {{ user.username }}</p>
+                <p><strong>Email:</strong> {{ user.email|default:"Not set" }}</p>
+                <p><strong>Member since:</strong> {{ user.date_joined|date:"M d, Y" }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-info-circle"></i> Profile Info
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Profile settings will be available once you create some recipes!</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

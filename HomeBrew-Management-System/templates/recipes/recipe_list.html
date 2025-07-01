@@ -1,0 +1,155 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Recipes - HomeBrew Management{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-book"></i> My Recipes</h1>
+    <a href="{% url 'recipe_create' %}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> New Recipe
+    </a>
+</div>
+
+<!-- Search and Filter -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" name="search" 
+                               placeholder="Search recipes..." value="{{ search_query }}">
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" name="style">
+                            <option value="">All Styles</option>
+                            {% for style in styles %}
+                                <option value="{{ style.id }}" {% if style.id|stringformat:"s" == style_filter %}selected{% endif %}>
+                                    {{ style.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" name="sort">
+                            <option value="-created_at" {% if sort_by == "-created_at" %}selected{% endif %}>Newest First</option>
+                            <option value="created_at" {% if sort_by == "created_at" %}selected{% endif %}>Oldest First</option>
+                            <option value="name" {% if sort_by == "name" %}selected{% endif %}>Name A-Z</option>
+                            <option value="-name" {% if sort_by == "-name" %}selected{% endif %}>Name Z-A</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-outline-primary w-100">
+                            <i class="bi bi-search"></i> Search
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recipe Cards -->
+{% if page_obj %}
+    <div class="row">
+        {% for recipe in page_obj %}
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">{{ recipe.style.name|default:"No Style" }}</h6>
+                        {% if recipe.is_favorite %}
+                            <i class="bi bi-star-fill text-warning"></i>
+                        {% endif %}
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">{{ recipe.name }}</h5>
+                        <p class="card-text text-muted">{{ recipe.description|truncatewords:15 }}</p>
+                        
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <small class="text-muted">OG</small><br>
+                                <strong>{{ recipe.calculated_og|floatformat:3|default:"-" }}</strong>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">IBU</small><br>
+                                <strong>{{ recipe.calculated_ibu|floatformat:0|default:"-" }}</strong>
+                            </div>
+                        </div>
+                        
+                        <div class="row text-center mt-2">
+                            <div class="col-6">
+                                <small class="text-muted">ABV</small><br>
+                                <strong>{{ recipe.calculated_abv|floatformat:1|default:"-" }}%</strong>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">Size</small><br>
+                                <strong>{{ recipe.batch_size }}L</strong>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'recipe_detail' recipe.pk %}" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-eye"></i> View
+                            </a>
+                            <div class="btn-group">
+                                <a href="{% url 'recipe_edit' recipe.pk %}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="{% url 'recipe_clone' recipe.pk %}" class="btn btn-outline-info btn-sm">
+                                    <i class="bi bi-files"></i>
+                                </a>
+                            </div>
+                        </div>
+                        <small class="text-muted">Created {{ recipe.created_at|timesince }} ago</small>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+        <nav aria-label="Recipe pagination">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if style_filter %}&style={{ style_filter }}{% endif %}&sort={{ sort_by }}">Previous</a>
+                    </li>
+                {% endif %}
+                
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                    {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}{% if style_filter %}&style={{ style_filter }}{% endif %}&sort={{ sort_by }}">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if style_filter %}&style={{ style_filter }}{% endif %}&sort={{ sort_by }}">Next</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    {% endif %}
+    
+{% else %}
+    <div class="text-center py-5">
+        <i class="bi bi-book display-1 text-muted"></i>
+        <h3 class="mt-3">No Recipes Found</h3>
+        <p class="text-muted">{% if search_query %}No recipes match your search criteria.{% else %}You haven't created any recipes yet.{% endif %}</p>
+        <a href="{% url 'recipe_create' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Create Your First Recipe
+        </a>
+        <a href="{% url 'ai_recipe_generator_django' %}" class="btn btn-warning ms-2">
+            <i class="bi bi-robot"></i> AI Recipe Generator
+        </a>
+    </div>
+{% endif %}
+{% endblock %}
